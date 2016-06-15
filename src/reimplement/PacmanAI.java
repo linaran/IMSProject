@@ -74,7 +74,7 @@ public class PacmanAI extends AgentAI {
   private float[] w = {10, -500, 1};
 
   private static final int BUFFER_SIZE = 1000;
-  private ArrayList<Location> lastLocations = new ArrayList<Location>(BUFFER_SIZE);
+  private ArrayList<Location> lastLocations = new ArrayList<Location>();
   private int index = 0;
 
   private float getDistance(PacmanVisibleWorld mySurroundings, Location location, String element) {
@@ -107,6 +107,16 @@ public class PacmanAI extends AgentAI {
     }
     return distance;
 
+  }
+
+  private void addLocation(Location loc) {
+    if (lastLocations.size() < BUFFER_SIZE) {
+      lastLocations.add(loc);
+    }
+    else {
+      lastLocations.add(index, myLocation);
+    }
+    index = (index + 1) % BUFFER_SIZE;
   }
 
   private float isLastLocation(Location loc) {
@@ -186,6 +196,12 @@ public class PacmanAI extends AgentAI {
   public int decideMove(ArrayList<int[]> moves, PacmanVisibleWorld mySurroundings, WorldEntity.WorldEntityInfo myInfo) {
     points.remove(myLocation);
     //System.out.println("Pocetak");
+    boolean death = myInfo.hasProperty(PacmanAgent.deathPropertyName);
+    if (death) {
+      index = 0;
+      lastLocations = new ArrayList<>();
+    }
+
     float q = qScore(mySurroundings, new Location(0, 0), myInfo);
 
     Location nextLocation = myLocation;
@@ -212,8 +228,7 @@ public class PacmanAI extends AgentAI {
 
     int[] move = moves.get(moveIndex);
     nextLocation = new Location(myLocation.getX() + move[0], myLocation.getY() + move[1]);
-    lastLocations.add(index, myLocation);
-    index = (index + 1) % BUFFER_SIZE;
+    addLocation(myLocation);
     points.remove(myLocation);
     myLocation = nextLocation;
     points.remove(myLocation);
