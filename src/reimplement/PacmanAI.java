@@ -35,10 +35,7 @@ public class PacmanAI extends AgentAI {
     public boolean equals(Object o) {
       if (o instanceof Location) {
         Location temp = (Location) o;
-        if ((temp.x == this.x) && (temp.y == this.y))
-          return true;
-        else
-          return false;
+        return (temp.x == this.x) && (temp.y == this.y);
       } else
         return false;
     }
