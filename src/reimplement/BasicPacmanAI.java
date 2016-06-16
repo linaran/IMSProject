@@ -1,153 +1,196 @@
 package reimplement;
 
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+import com.jme3.math.Vector3f;
 import mmaracic.gameaiframework.AgentAI;
+import mmaracic.gameaiframework.PacmanAgent;
 import mmaracic.gameaiframework.PacmanVisibleWorld;
 import mmaracic.gameaiframework.WorldEntity;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Random;
 
 /**
- * BasicPacmanAI
+ *
+ * @author Marijo
  */
 public class BasicPacmanAI extends AgentAI {
-  private int radiusX = 0;
-  private int radiusY = 0;
+    protected static class Location implements Comparable<Location>
+    {
+        int x=0,y=0;
 
-  private PacmanVisibleWorld visibleWorld = null;
-  private int[] lastPoint = null;
+        Location(int x, int y)
+        {this.x=x; this.y=y;}
 
-  @Override
-  public int decideMove(ArrayList<int[]> moves, PacmanVisibleWorld mySurroundings, WorldEntity.WorldEntityInfo myInfo) {
-    //region Init
-    radiusX = mySurroundings.getDimensionX() / 2;
-    radiusY = mySurroundings.getDimensionY() / 2;
+        int getX() {return x;}
+        int getY() {return y;}
 
-    visibleWorld = mySurroundings;
-    //endregion
-
-//    StringBuilder s = new StringBuilder();
-//    for (int[] move : moves)
-//      s.append(Arrays.toString(move)).append(" ");
-//    printStatus(s.toString());
-
-    int choice = 0;
-    int[] useless = new int[]{0, 0};
-
-    try {
-      List<int[]> safe = new ArrayList<>();
-      List<int[]> score = new ArrayList<>();
-
-      for (int[] move : moves) {
-        int report = scanner(useless, move, "Ghost");
-        if (report != 1)
-          safe.add(move);
-      }
-
-      if (safe.size() != 0)
-        for (int[] move : safe) {
-          int report = scanner(useless, move, "Point");
-          System.out.println("Hunting a point: " + Arrays.toString(move));
-          if (report == 1)
-            score.add(move);
+        @Override
+        public boolean equals(Object o)
+        {
+            if (o instanceof Location)
+            {
+                Location temp = (Location) o;
+                if ((temp.x==this.x) && (temp.y==this.y))
+                    return true;
+                else
+                    return false;
+            }
+            else
+                return false;
         }
 
-      Date now = new Date();
-      Random r = new Random(now.getTime());
-      if (score.size() != 0) {
-        choice = moves.indexOf(score.get(r.nextInt(score.size())));
-      } else if (safe.size() != 0) {
-        choice = moves.indexOf(safe.get(r.nextInt(safe.size())));
-      } else {
-        choice = r.nextInt(moves.size());
-      }
-
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-
-    printStatus(Arrays.toString(moves.get(choice)));
-    return choice;
-  }
-
-  private int scanner(int[] currentPosition, int[] movement, String target) {
-    int[] nextPosition = vecAdd(currentPosition, movement);
-
-    while (true) {
-      if (outRange(-radiusX, radiusX, nextPosition[0]) || outRange(-radiusY, radiusY, nextPosition[1])) {
-//        printStatus(radiusX + " " + radiusY + " " + Arrays.toString(nextPosition));
-        return 0;
-      }
-
-//      printStatus("Checking out " + " " + nextPosition[0] + " " + nextPosition[1]);
-
-      List<WorldEntity.WorldEntityInfo> infos = visibleWorld.getWorldInfoAt(nextPosition[0], nextPosition[1]);
-      if (infos == null) {
-//        printStatus("NULL");
-        return 0;
-      }
-
-      for (WorldEntity.WorldEntityInfo info : infos) {
-        if (isEntity(info, target) || (target.equals("Point") && isEntity(info, "Powerup"))) {
-//          printStatus(target + ": " + nextPosition[0] + " " + nextPosition[1]);
-          return 1;
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 79 * hash + this.x;
+            hash = 79 * hash + this.y;
+            return hash;
         }
 
-        if (isEntity(info, "Wall")) {
-//          printStatus("WALL!");
-          return 0;
+        public float distanceTo(Location other)
+        {
+            int distanceX = other.x - x;
+            int distanceY = other.y - y;
+
+            return (float) Math.abs(distanceX) + Math.abs(distanceY);
+//            return (float) Math.sqrt(distanceX*distanceX + distanceY+distanceY);
         }
-      }
 
-      nextPosition[0] += movement[0];
-      nextPosition[1] += movement[1];
-    }
-  }
-
-  private boolean isEntity(WorldEntity.WorldEntityInfo info, String entity) {
-    return info.getIdentifier().compareToIgnoreCase(entity) == 0;
-  }
-
-  private boolean isWall(int[] location) {
-    List<WorldEntity.WorldEntityInfo> infos = visibleWorld.getWorldInfoAt(location[0], location[1]);
-
-    for (WorldEntity.WorldEntityInfo info : infos) {
-      if (isEntity(info, "Wall"))
-        return true;
+        @Override
+        public int compareTo(Location o) {
+            if (x==o.x)
+            {
+                return Integer.compare(y, o.y);
+            }
+            else
+            {
+                return Integer.compare(x, o.x);
+            }
+        }
     }
 
-    return false;
-  }
+    private HashSet<Location> points = new HashSet<>();
+    private Location myLocation = new Location(0, 0);
 
-  private int[] vecAdd(int[] o1, int[] o2) {
-    return new int[]{
-        o1[0] + o1[0],
-        o2[1] + o2[1]
-    };
-  }
+    private Date now = new Date();
+    private Random r = new Random(now.getTime());
 
-  private boolean outRange(int bottom, int up, int value) {
-    return value < bottom || value > up;
-  }
+    private Location targetLocation = myLocation;
+    private float targetDistance = Float.MAX_VALUE;
+    private int targetDuration = 0;
 
-//  private int[] turnRight(int[] movement) {
-//    int[] retValue = new int[2];
-//
-//    retValue[0] = movement[1];
-//    retValue[1] = -movement[0];
-//
-//    return retValue;
-//  }
-//
-//  private int[] turnLeft(int[] movement) {
-//    int[] retValue = new int[2];
-//
-//    retValue[0] = -movement[1];
-//    retValue[1] = movement[0];
-//
-//    return retValue;
-//  }
+    @Override
+    public int decideMove(ArrayList<int []> moves, PacmanVisibleWorld mySurroundings, WorldEntity.WorldEntityInfo myInfo)
+    {
+        int radiusX = mySurroundings.getDimensionX()/2;
+        int radiusY = mySurroundings.getDimensionY()/2;
 
-//  private int manhattanDistance(int[] o1, int[] o2) {
-//    return Math.abs(o1[0] - o2[0]) + Math.abs(o1[1] - o2[1]);
-//  }
+        boolean powerUP = myInfo.hasProperty(PacmanAgent.powerupPropertyName);
+        Vector3f pos = myInfo.getPosition();
+//        printStatus("Location x: "+pos.x+" y: "+pos.y);
+
+        float ghostDistance = Float.MAX_VALUE;
+        Location ghostLocation = null;
+        for (int i = -radiusX; i<=radiusX; i++)
+        {
+            for (int j = -radiusY; j<=radiusY; j++)
+            {
+                if (i==0 && j==0) continue;
+                Location tempLocation = new Location(myLocation.getX()+i, myLocation.getY()+j);
+                ArrayList<WorldEntity.WorldEntityInfo> neighPosInfos = mySurroundings.getWorldInfoAt(i, j);
+                if (neighPosInfos != null)
+                {
+                    for (WorldEntity.WorldEntityInfo info : neighPosInfos)
+                    {
+                        if (info.getIdentifier().compareToIgnoreCase("Pacman")==0)
+                        {
+                            //Ignore myself
+                        }
+                        else if (info.getIdentifier().compareToIgnoreCase("Wall")==0)
+                        {
+                            //Its a wall, who cares!
+                        }
+                        else if (info.getIdentifier().compareToIgnoreCase("Point")==0 ||
+                                info.getIdentifier().compareToIgnoreCase("Powerup")==0)
+                        {
+                            //Remember where it is!
+                            float currPointDistance = myLocation.distanceTo(tempLocation);
+                            points.add(tempLocation);
+                        }
+                        else if (info.getIdentifier().compareToIgnoreCase("Ghost")==0)
+                        {
+                            //Remember him!
+                            float currGhostDistance = myLocation.distanceTo(tempLocation);
+                            if (currGhostDistance<ghostDistance)
+                            {
+                                ghostDistance = currGhostDistance;
+                                ghostLocation = tempLocation;
+                            }
+                        }
+                        else
+                        {
+                            printStatus("I dont know what "+info.getIdentifier()+" is!");
+                        }
+                    }
+                }
+            }
+        }
+
+        //move toward the point
+        //pick next if arrived
+        if (targetLocation==myLocation)
+        {
+            targetLocation = points.iterator().next();
+            targetDistance = myLocation.distanceTo(targetLocation);
+            targetDuration=0;
+        }
+
+         targetDuration++;
+
+        //sticking with target too long -> got stuck
+        //dont get stuck
+       if (targetDuration>10)
+        {
+            ArrayList<Location> pointList = new ArrayList<>(points);
+            int choice = r.nextInt(pointList.size());
+
+            targetLocation = pointList.get(choice);
+            targetDistance = myLocation.distanceTo(targetLocation);
+            targetDuration = 0;
+        }
+
+        //select move
+        float currMinPDistance = Float.MAX_VALUE;
+        Location nextLocation = myLocation;
+        int moveIndex = 0;
+
+        for (int i=moves.size()-1; i>=0; i--)
+        {
+            int[] move = moves.get(i);
+            Location moveLocation = new Location(myLocation.getX()+move[0], myLocation.getY()+move[1]);
+            float newPDistance = moveLocation.distanceTo(targetLocation);
+            float newGDistance=(ghostDistance<Float.MAX_VALUE)?moveLocation.distanceTo(ghostLocation):Float.MAX_VALUE;
+            if (newPDistance<=currMinPDistance && newGDistance>1)
+            {
+                //that way
+                currMinPDistance = newPDistance;
+                nextLocation = moveLocation;
+                moveIndex = i;
+            }
+       }
+
+        points.remove(myLocation);
+        myLocation = nextLocation;
+        points.remove(myLocation);
+
+        return moveIndex;
+    }
 }

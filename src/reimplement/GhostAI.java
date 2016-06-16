@@ -66,10 +66,11 @@ public class GhostAI extends AgentAI {
 
   private float[] w = {500, 10};
 
-  private static Location pacmanLocation = null;
+//  private static Location pacmanLocation = null;
   private static final int BUFFER_SIZE = 1000;
   private static ArrayList<Location> lastLocations = new ArrayList<Location>(BUFFER_SIZE);
   private static int index = 0;
+  private boolean pacmanPowerUP = false;
 
   private float getDistance(PacmanVisibleWorld mySurroundings, Location location, String element) {
     int radiusX = mySurroundings.getDimensionX() / 2;
@@ -88,7 +89,10 @@ public class GhostAI extends AgentAI {
               //Remember him!
 
               float currDistance = location.distanceTo(tempLocation);
-              if (element == "Pacman") pacmanLocation = tempLocation;
+              if (element.equals("Pacman") && info.hasProperty(PacmanAgent.powerupPropertyName)) {
+                System.out.println("POWEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER");
+                pacmanPowerUP = true;
+              }
               if (currDistance < distance) {
                 distance = currDistance;
               }
@@ -138,14 +142,14 @@ public class GhostAI extends AgentAI {
     }
 
     float pacmanDistance = getDistance(mySurroundings, loc, "Pacman");
-    if (pacmanDistance > 10 && pacmanLocation != null) {
-      pacmanDistance = loc.distanceTo(pacmanLocation);
-    }
+//    if (pacmanDistance > 10 && pacmanLocation != null) {
+//      pacmanDistance = loc.distanceTo(pacmanLocation);
+//    }
     Location location = new Location(myLocation.getX() + loc.getX(), myLocation.getY() + loc.getY());
-    boolean powerUP = myInfo.hasProperty(PacmanAgent.powerupPropertyName);
     int reverse = 1;
-    if (powerUP) reverse = -1;
+    if (pacmanPowerUP) reverse = -1;
     float q = reverse * w[0] / (pacmanDistance + 0.1f) + w[1] * isLastLocation(location) ;
+    pacmanPowerUP = false;
     return q;
   }
 
@@ -198,10 +202,10 @@ public class GhostAI extends AgentAI {
     int[] move = moves.get(moveIndex);
     nextLocation = new Location(myLocation.getX() + move[0], myLocation.getY() + move[1]);
     addLocation(myLocation);
+//    if (pacmanLocation != null && myLocation.equals(pacmanLocation)) {
+//      pacmanLocation = null;
+//    }
     myLocation = nextLocation;
-    if (pacmanLocation != null && myLocation.equals(pacmanLocation)) {
-      pacmanLocation = null;
-    }
 
     return moveIndex;
   }

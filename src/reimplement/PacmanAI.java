@@ -200,6 +200,7 @@ public class PacmanAI extends AgentAI {
     if (death) {
       index = 0;
       lastLocations = new ArrayList<>();
+      points = new HashSet<>();
     }
 
     float q = qScore(mySurroundings, new Location(0, 0), myInfo);
